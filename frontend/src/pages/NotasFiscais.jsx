@@ -34,6 +34,12 @@ export default function NotasFiscais() {
     carregar(busca);
   }
 
+  async function excluir(id) {
+    if (!confirm('Excluir esta nota fiscal e todos os CT-es e boletos vinculados?')) return;
+    await api.delete(`/notas-fiscais/${id}`);
+    carregar(busca);
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center gap-4">
@@ -66,7 +72,8 @@ export default function NotasFiscais() {
                 <td className="p-2">{brl(n.valor_nf)}</td>
                 <td className="p-2">{n.qtd_ctes}</td>
                 <td className="p-2">
-                  <button onClick={() => navigate(`/notas-fiscais/${n.id}`)} className="text-[#137a65] font-bold">Ver CT-es</button>
+                  <button onClick={() => navigate(`/notas-fiscais/${n.id}`)} className="text-[#137a65] font-bold mr-3">Ver CT-es</button>
+                  {usuario?.is_admin && <button onClick={() => excluir(n.id)} className="text-[#c53644] font-bold">Excluir</button>}
                 </td>
               </tr>
             ))}
