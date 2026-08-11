@@ -24,6 +24,63 @@ def _int(v):
     return int(v)
 
 
+@bp.post('/extrair')
+@admin_required
+def extrair_pdf():
+    import re
+    if 'arquivo' not in request.files:
+        return erro('Envie o arquivo PDF da NF-e', 400)
+    arquivo = request.files['arquivo']
+
+    try:
+        import pdfplumber
+        with pdfplumber.open(arquivo) as pdf:
+            texto = '\n'.join((p.extract_text() or '') for p in pdf.pages)
+    except Exception:
+        return erro('Não foi possível ler esse PDF. Se for uma nota escaneada (imagem), preencha manualmente.', 400)
+
+    if not texto.strip():
+        return erro('O PDF não tem texto legível (provavelmente é uma imagem escaneada). Preencha manualmente.', 400)
+
+    def buscar(padrao):
+        m = re.search(padrao, texto, re.IGNORECASE)
+        return m.group(1).strip() if m else None
+
+    def num_br(v):
+        if not v:
+            return None
+        v = v.replace('.', '').replace(',', '.')
+        try:
+            return float(v)
+        except ValueError:
+            return None
+
+    numero_nf = buscar(r'N[ºO°]\.?\s*[:\-]?\s*([\d\.]{3,})')
+    valor_nf = num_br(buscar(r'VALOR TOTAL DA NOTA\s*[\r\n]*\s*R?\$?\s*([\d\.,]+)'))
+    peso = num_br(buscar(r'PESO BRUTO\s*[\r\n]*\s*([\d\.,]+)'))
+    volumes_raw = buscar(r'QUANTIDADE\s*[\r\n]*\s*([\d\.,]+)')
+    volumes = None
+    if volumes_raw:
+        try:
+            volumes = int(float(volumes_raw.replace(',', '.')))
+        except ValueError:
+            volumes = None
+    data_raw = buscar(r'DATA DA EMISS[AÃ]O\s*[\r\n]*\s*(\d{2}/\d{2}/\d{4})')
+    data_emissao = None
+    if data_raw:
+        d, m, a = data_raw.split('/')
+        data_emissao = f'{a}-{m}-{d}'
+
+    encontrou_algo = any([numero_nf, valor_nf, peso, volumes, data_emissao])
+    return ok({
+        'numero_nf': numero_nf,
+        'valor_nf': valor_nf,
+        'peso': peso,
+        'volumes': volumes,
+        'data_emissao': data_emissao,
+    }, 'Dados extraídos, confira antes de salvar' if encontrou_algo else 'Não consegui reconhecer os campos automaticamente, preencha manualmente')
+
+
 @bp.get('')
 @jwt_required()
 def listar():
