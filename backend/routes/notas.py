@@ -12,6 +12,18 @@ def _parse_date(v):
     return datetime.strptime(v, '%Y-%m-%d').date() if v else None
 
 
+def _num(v, default=None):
+    if v in (None, ''):
+        return default
+    return v
+
+
+def _int(v):
+    if v in (None, ''):
+        return None
+    return int(v)
+
+
 @bp.get('')
 @jwt_required()
 def listar():
@@ -50,9 +62,9 @@ def criar():
         if not body.get(campo):
             return erro(f'Campo obrigatório: {campo}')
     n = NotaFiscal(cliente_id=body['cliente_id'], numero_nf=body['numero_nf'],
-                   data_emissao=_parse_date(body.get('data_emissao')), valor_nf=body.get('valor_nf', 0),
-                   peso=body.get('peso'), volumes=body.get('volumes'),
-                   origem=body.get('origem'), destino=body.get('destino'))
+                   data_emissao=_parse_date(body.get('data_emissao')), valor_nf=_num(body.get('valor_nf'), 0),
+                   peso=_num(body.get('peso')), volumes=_int(body.get('volumes')),
+                   origem=body.get('origem') or None, destino=body.get('destino') or None)
     db.session.add(n)
     db.session.commit()
     return ok(n.to_dict(), 'Nota fiscal criada', 201)
@@ -65,9 +77,15 @@ def atualizar(id):
     if not n:
         return erro('Nota fiscal não encontrada', 404)
     body = request.get_json(force=True) or {}
-    for campo in ('numero_nf', 'valor_nf', 'peso', 'volumes', 'origem', 'destino', 'cliente_id'):
+    for campo in ('numero_nf', 'origem', 'destino', 'cliente_id'):
         if campo in body:
-            setattr(n, campo, body[campo])
+            setattr(n, campo, body[campo] or None)
+    if 'valor_nf' in body:
+        n.valor_nf = _num(body['valor_nf'], 0)
+    if 'peso' in body:
+        n.peso = _num(body['peso'])
+    if 'volumes' in body:
+        n.volumes = _int(body['volumes'])
     if 'data_emissao' in body:
         n.data_emissao = _parse_date(body['data_emissao'])
     db.session.commit()
