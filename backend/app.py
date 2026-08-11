@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from config import Config
 from extensions import db, jwt
@@ -24,6 +24,10 @@ def create_app():
 
     for bp in (auth_bp, clientes_bp, transportadoras_bp, notas_bp, ctes_bp, boletos_bp, dashboard_bp):
         app.register_blueprint(bp)
+
+    @app.route('/uploads/<path:subpath>')
+    def uploads(subpath):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], subpath)
 
     with app.app_context():
         db.create_all()
