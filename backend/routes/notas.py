@@ -35,15 +35,25 @@ def extrair_pdf():
     try:
         import pdfplumber
         with pdfplumber.open(arquivo) as pdf:
-            texto = '\n'.join((p.extract_text() or '') for p in pdf.pages)
+            texto_paginas = []
+            celulas = []
+            for page in pdf.pages:
+                texto_paginas.append(page.extract_text() or '')
+                for table in page.extract_tables():
+                    for row in table:
+                        for cell in row:
+                            if cell:
+                                celulas.append(cell)
+            texto = '\n'.join(texto_paginas)
+            texto_tabelas = '\n'.join(celulas)
     except Exception:
         return erro('Não foi possível ler esse PDF. Se for uma nota escaneada (imagem), preencha manualmente.', 400)
 
     if not texto.strip():
         return erro('O PDF não tem texto legível (provavelmente é uma imagem escaneada). Preencha manualmente.', 400)
 
-    def buscar(padrao):
-        m = re.search(padrao, texto, re.IGNORECASE)
+    def buscar(txt, padrao):
+        m = re.search(padrao, txt, re.IGNORECASE)
         return m.group(1).strip() if m else None
 
     def num_br(v):
@@ -55,17 +65,17 @@ def extrair_pdf():
         except ValueError:
             return None
 
-    numero_nf = buscar(r'N[ºO°]\.?\s*[:\-]?\s*([\d\.]{3,})')
-    valor_nf = num_br(buscar(r'VALOR TOTAL DA NOTA\s*[\r\n]*\s*R?\$?\s*([\d\.,]+)'))
-    peso = num_br(buscar(r'PESO BRUTO\s*[\r\n]*\s*([\d\.,]+)'))
-    volumes_raw = buscar(r'QUANTIDADE\s*[\r\n]*\s*([\d\.,]+)')
+    numero_nf = buscar(texto, r'N[ºO°]\s*:?\s*([\d\.]{3,})')
+    valor_nf = num_br(buscar(texto, r'Valor Total\s*:\s*([\d\.,]+)') or buscar(texto_tabelas, r'VALOR TOTAL DA NOTA\s*\n\s*([\d\.,]+)'))
+    peso = num_br(buscar(texto_tabelas, r'PESO BRUTO\s*\n\s*([\d\.,]+)'))
+    volumes_raw = buscar(texto_tabelas, r'QUANTIDADE\s*\n\s*([\d\.,]+)')
     volumes = None
     if volumes_raw:
         try:
             volumes = int(float(volumes_raw.replace(',', '.')))
         except ValueError:
             volumes = None
-    data_raw = buscar(r'DATA DA EMISS[AÃ]O\s*[\r\n]*\s*(\d{2}/\d{2}/\d{4})')
+    data_raw = buscar(texto, r'Emiss[ãa]o\s*:\s*(\d{2}/\d{2}/\d{4})') or buscar(texto_tabelas, r'DATA DA EMISS[AÃ]O\s*\n\s*(\d{2}/\d{2}/\d{4})')
     data_emissao = None
     if data_raw:
         d, m, a = data_raw.split('/')
