@@ -12,6 +12,10 @@ def _parse_date(v):
     return datetime.strptime(v, '%Y-%m-%d').date() if v else None
 
 
+def _num(v, default=None):
+    return default if v in (None, '') else v
+
+
 def _pode_ver(cte):
     claims = get_jwt()
     if claims.get('is_admin'):
@@ -51,7 +55,7 @@ def criar():
         if not body.get(campo):
             return erro(f'Campo obrigatório: {campo}')
     c = Cte(nf_id=body['nf_id'], transportadora_id=body['transportadora_id'],
-            numero_cte=body['numero_cte'], valor_frete=body.get('valor_frete', 0),
+            numero_cte=body['numero_cte'], valor_frete=_num(body.get('valor_frete'), 0),
             data_emissao=_parse_date(body.get('data_emissao')))
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
         c.pdf = save_upload(request.files['pdf'], 'ctes/pdf')
@@ -69,9 +73,11 @@ def atualizar(id):
     if not c:
         return erro('CT-e não encontrado', 404)
     body = request.form if request.form else (request.get_json(silent=True) or {})
-    for campo in ('numero_cte', 'valor_frete', 'transportadora_id', 'nf_id'):
+    for campo in ('numero_cte', 'transportadora_id', 'nf_id'):
         if campo in body:
             setattr(c, campo, body[campo])
+    if 'valor_frete' in body:
+        c.valor_frete = _num(body['valor_frete'], 0)
     if 'data_emissao' in body:
         c.data_emissao = _parse_date(body['data_emissao'])
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
