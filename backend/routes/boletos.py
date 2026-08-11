@@ -12,6 +12,10 @@ def _parse_date(v):
     return datetime.strptime(v, '%Y-%m-%d').date() if v else None
 
 
+def _num(v, default=None):
+    return default if v in (None, '') else v
+
+
 def _pode_ver(boleto):
     claims = get_jwt()
     if claims.get('is_admin'):
@@ -48,7 +52,7 @@ def criar():
     for campo in ('cte_id', 'numero'):
         if not body.get(campo):
             return erro(f'Campo obrigatório: {campo}')
-    b = Boleto(cte_id=body['cte_id'], numero=body['numero'], valor=body.get('valor', 0),
+    b = Boleto(cte_id=body['cte_id'], numero=body['numero'], valor=_num(body.get('valor'), 0),
                vencimento=_parse_date(body.get('vencimento')), status=body.get('status', 'PENDENTE'))
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
         b.pdf = save_upload(request.files['pdf'], 'boletos')
@@ -64,9 +68,11 @@ def atualizar(id):
     if not b:
         return erro('Boleto não encontrado', 404)
     body = request.form if request.form else (request.get_json(silent=True) or {})
-    for campo in ('numero', 'valor', 'status'):
+    for campo in ('numero', 'status'):
         if campo in body:
             setattr(b, campo, body[campo])
+    if 'valor' in body:
+        b.valor = _num(body['valor'], 0)
     if 'vencimento' in body:
         b.vencimento = _parse_date(body['vencimento'])
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
