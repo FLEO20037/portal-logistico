@@ -13,6 +13,8 @@ export default function NotasFiscais() {
   const [busca, setBusca] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(vazio);
+  const [extraindo, setExtraindo] = useState(false);
+  const [avisoExtracao, setAvisoExtracao] = useState('');
   const navigate = useNavigate();
   const { usuario } = useAuth();
 
@@ -38,6 +40,32 @@ export default function NotasFiscais() {
     if (!confirm('Excluir esta nota fiscal e todos os CT-es e boletos vinculados?')) return;
     await api.delete(`/notas-fiscais/${id}`);
     carregar(busca);
+  }
+
+  async function extrairDePdf(e) {
+    const arquivo = e.target.files[0];
+    if (!arquivo) return;
+    setExtraindo(true);
+    setAvisoExtracao('');
+    try {
+      const fd = new FormData();
+      fd.append('arquivo', arquivo);
+      const { data } = await api.post('/notas-fiscais/extrair', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const d = data.dados;
+      setForm(prev => ({
+        ...prev,
+        numero_nf: d.numero_nf || prev.numero_nf,
+        valor_nf: d.valor_nf ?? prev.valor_nf,
+        peso: d.peso ?? prev.peso,
+        volumes: d.volumes ?? prev.volumes,
+        data_emissao: d.data_emissao || prev.data_emissao,
+      }));
+      setAvisoExtracao(data.mensagem);
+    } catch (err) {
+      setAvisoExtracao(err.response?.data?.mensagem || 'Erro ao ler o PDF.');
+    } finally {
+      setExtraindo(false);
+    }
   }
 
   return (
@@ -83,6 +111,12 @@ export default function NotasFiscais() {
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title="Nova nota fiscal">
+        <div className="bg-[#f4f7fb] border border-[#e2e9f1] rounded-lg p-3 mb-4">
+          <label className="text-xs font-bold text-[#475569] block mb-1">Preencher automaticamente a partir do PDF da NF-e (DANFE)</label>
+          <input type="file" accept=".pdf" className="text-sm" onChange={extrairDePdf} disabled={extraindo} />
+          {extraindo && <p className="text-xs text-[#71809a] mt-1">Lendo o PDF...</p>}
+          {avisoExtracao && <p className="text-xs text-[#9b6400] mt-1">{avisoExtracao}</p>}
+        </div>
         <form onSubmit={salvar} className="grid grid-cols-2 gap-3">
           <label className="grid gap-1 text-xs font-bold text-[#475569]">Cliente
             <select required className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })}>
