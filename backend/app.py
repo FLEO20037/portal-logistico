@@ -31,9 +31,28 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _migrar_boletos_para_many_to_many()
         _seed_admin()
 
     return app
+
+
+def _migrar_boletos_para_many_to_many():
+    from sqlalchemy import text
+    insp = db.inspect(db.engine)
+    if 'boletos' not in insp.get_table_names():
+        return
+    colunas = [c['name'] for c in insp.get_columns('boletos')]
+    if 'cte_id' not in colunas:
+        return
+    with db.engine.begin() as conn:
+        linhas = conn.execute(text("SELECT id, cte_id FROM boletos WHERE cte_id IS NOT NULL")).fetchall()
+        for boleto_id, cte_id in linhas:
+            conn.execute(text(
+                "INSERT INTO boleto_ctes (boleto_id, cte_id) "
+                "SELECT :b, :c WHERE NOT EXISTS (SELECT 1 FROM boleto_ctes WHERE boleto_id=:b AND cte_id=:c)"
+            ), {'b': boleto_id, 'c': cte_id})
+        conn.execute(text("ALTER TABLE boletos DROP COLUMN cte_id"))
 
 
 def _seed_admin():
