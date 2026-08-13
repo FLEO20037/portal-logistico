@@ -20,7 +20,8 @@ def _pode_ver(boleto):
     claims = get_jwt()
     if claims.get('is_admin'):
         return True
-    return str(boleto.cte.nota_fiscal.cliente_id) == get_jwt_identity()
+    cliente_id = get_jwt_identity()
+    return any(str(c.nota_fiscal.cliente_id) == cliente_id for c in boleto.ctes)
 
 
 @bp.get('')
@@ -30,12 +31,12 @@ def listar():
     status = request.args.get('status')
     query = Boleto.query
     if cte_id:
-        query = query.filter_by(cte_id=cte_id)
+        query = query.filter(Boleto.ctes.any(Cte.id == cte_id))
     if status:
         query = query.filter_by(status=status)
     claims = get_jwt()
     if not claims.get('is_admin'):
-        query = query.join(Cte).join(NotaFiscal).filter(NotaFiscal.cliente_id == get_jwt_identity())
+        query = query.join(Boleto.ctes).join(NotaFiscal).filter(NotaFiscal.cliente_id == get_jwt_identity()).distinct()
     boletos = query.order_by(Boleto.vencimento).all()
     hoje = date.today()
     for b in boletos:
@@ -48,12 +49,19 @@ def listar():
 @bp.post('')
 @admin_required
 def criar():
-    body = request.form if request.form else (request.get_json(silent=True) or {})
-    for campo in ('cte_id', 'numero'):
-        if not body.get(campo):
-            return erro(f'Campo obrigatório: {campo}')
-    b = Boleto(cte_id=body['cte_id'], numero=body['numero'], valor=_num(body.get('valor'), 0),
+    if request.form:
+        body = request.form
+        cte_ids = request.form.getlist('cte_ids')
+    else:
+        body = request.get_json(silent=True) or {}
+        cte_ids = body.get('cte_ids') or []
+    if not body.get('numero'):
+        return erro('Campo obrigatório: numero')
+    if not cte_ids:
+        return erro('Selecione ao menos um CT-e')
+    b = Boleto(numero=body['numero'], valor=_num(body.get('valor'), 0),
                vencimento=_parse_date(body.get('vencimento')), status=body.get('status', 'PENDENTE'))
+    b.ctes = Cte.query.filter(Cte.id.in_(cte_ids)).all()
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
         b.pdf = save_upload(request.files['pdf'], 'boletos')
     db.session.add(b)
@@ -67,7 +75,12 @@ def atualizar(id):
     b = Boleto.query.get(id)
     if not b:
         return erro('Boleto não encontrado', 404)
-    body = request.form if request.form else (request.get_json(silent=True) or {})
+    if request.form:
+        body = request.form
+        cte_ids = request.form.getlist('cte_ids')
+    else:
+        body = request.get_json(silent=True) or {}
+        cte_ids = body.get('cte_ids')
     for campo in ('numero', 'status'):
         if campo in body:
             setattr(b, campo, body[campo])
@@ -75,6 +88,8 @@ def atualizar(id):
         b.valor = _num(body['valor'], 0)
     if 'vencimento' in body:
         b.vencimento = _parse_date(body['vencimento'])
+    if cte_ids:
+        b.ctes = Cte.query.filter(Cte.id.in_(cte_ids)).all()
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
         b.pdf = save_upload(request.files['pdf'], 'boletos')
     db.session.commit()
