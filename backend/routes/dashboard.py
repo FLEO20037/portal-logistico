@@ -16,8 +16,8 @@ def resumo():
     nf_ids = [n.id for n in nf_query.all()]
     cte_query = Cte.query if is_admin else Cte.query.filter(Cte.nf_id.in_(nf_ids))
     cte_ids = [c.id for c in cte_query.all()]
-    bol_query = Boleto.query if is_admin else Boleto.query.filter(Boleto.cte_id.in_(cte_ids))
-    boletos = bol_query.all()
+    bol_query = Boleto.query if is_admin else Boleto.query.filter(Boleto.ctes.any(Cte.id.in_(cte_ids)))
+    boletos = bol_query.distinct().all()
     pendentes = [b for b in boletos if b.status == 'PENDENTE']
     pagos = [b for b in boletos if b.status == 'PAGO']
     vencidos = [b for b in boletos if b.status == 'VENCIDO']
