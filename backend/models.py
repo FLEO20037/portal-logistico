@@ -70,7 +70,6 @@ class Cte(db.Model):
     data_emissao = db.Column(db.Date)
     pdf = db.Column(db.String(255))
     xml = db.Column(db.String(255))
-    boletos = db.relationship('Boleto', backref='cte', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {'id': self.id, 'nf_id': self.nf_id, 'transportadora_id': self.transportadora_id,
@@ -80,20 +79,26 @@ class Cte(db.Model):
                 'pdf': self.pdf, 'xml': self.xml}
 
 
+boleto_ctes = db.Table('boleto_ctes',
+    db.Column('boleto_id', db.Integer, db.ForeignKey('boletos.id'), primary_key=True),
+    db.Column('cte_id', db.Integer, db.ForeignKey('ctes.id'), primary_key=True))
+
+
 class Boleto(db.Model):
     __tablename__ = 'boletos'
     id = db.Column(db.Integer, primary_key=True)
-    cte_id = db.Column(db.Integer, db.ForeignKey('ctes.id'), nullable=False)
     numero = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Numeric(12, 2), default=0)
     vencimento = db.Column(db.Date)
-    status = db.Column(db.String(20), default='PENDENTE')  # PENDENTE, PAGO, VENCIDO
+    status = db.Column(db.String(20), default='PENDENTE')
     pdf = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ctes = db.relationship('Cte', secondary=boleto_ctes, backref=db.backref('boletos', lazy='dynamic'))
 
     def to_dict(self):
-        return {'id': self.id, 'cte_id': self.cte_id, 'numero': self.numero,
-                'valor': float(self.valor or 0),
+        return {'id': self.id, 'numero': self.numero, 'valor': float(self.valor or 0),
                 'vencimento': self.vencimento.isoformat() if self.vencimento else None,
                 'status': self.status, 'pdf': self.pdf,
+                'cte_ids': [c.id for c in self.ctes],
+                'ctes_numeros': [c.numero_cte for c in self.ctes],
                 'created_at': self.created_at.isoformat() if self.created_at else None}
