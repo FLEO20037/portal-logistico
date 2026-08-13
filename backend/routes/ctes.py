@@ -27,9 +27,12 @@ def _pode_ver(cte):
 @jwt_required()
 def listar():
     nf_id = request.args.get('nf_id')
+    transportadora_id = request.args.get('transportadora_id')
     query = Cte.query
     if nf_id:
         query = query.filter_by(nf_id=nf_id)
+    if transportadora_id:
+        query = query.filter_by(transportadora_id=transportadora_id)
     claims = get_jwt()
     if not claims.get('is_admin'):
         query = query.join(NotaFiscal).filter(NotaFiscal.cliente_id == get_jwt_identity())
