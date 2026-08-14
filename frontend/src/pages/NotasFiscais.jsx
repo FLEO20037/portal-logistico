@@ -13,6 +13,7 @@ export default function NotasFiscais() {
   const [busca, setBusca] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(vazio);
+  const [editId, setEditId] = useState(null);
   const [extraindo, setExtraindo] = useState(false);
   const [avisoExtracao, setAvisoExtracao] = useState('');
   const navigate = useNavigate();
@@ -28,10 +29,27 @@ export default function NotasFiscais() {
     if (usuario?.is_admin) api.get('/clientes').then(r => setClientes(r.data.dados));
   }, []);
 
+  function abrirNovo() {
+    setEditId(null);
+    setForm(vazio);
+    setAvisoExtracao('');
+    setModal(true);
+  }
+
+  function abrirEditar(n) {
+    setEditId(n.id);
+    setForm({ cliente_id: n.cliente_id, numero_nf: n.numero_nf, data_emissao: n.data_emissao || '',
+      valor_nf: n.valor_nf, peso: n.peso, volumes: n.volumes, origem: n.origem || '', destino: n.destino || '' });
+    setAvisoExtracao('');
+    setModal(true);
+  }
+
   async function salvar(e) {
     e.preventDefault();
-    await api.post('/notas-fiscais', form);
+    if (editId) await api.put(`/notas-fiscais/${editId}`, form);
+    else await api.post('/notas-fiscais', form);
     setModal(false);
+    setEditId(null);
     setForm(vazio);
     carregar(busca);
   }
@@ -75,82 +93,5 @@ export default function NotasFiscais() {
           <h1 className="text-2xl font-bold">Notas fiscais</h1>
           <p className="text-[#71809a]">Cadastre a NF-e com origem, destino e vincule os CT-es de transporte.</p>
         </div>
-        {usuario?.is_admin && <button onClick={() => setModal(true)} className="bg-[#137a65] text-white font-bold px-4 py-3 rounded-lg">Adicionar NF-e</button>}
+        {usuario?.is_admin && <button onClick={abrirNovo} className="bg-[#137a65] text-white font-bold px-4 py-3 rounded-lg">Adicionar NF-e</button>}
       </div>
-      <input
-        className="border border-[#ced8e5] rounded-lg p-3 my-4 w-72"
-        placeholder="Pesquisar por número, origem ou destino"
-        value={busca}
-        onChange={e => { setBusca(e.target.value); carregar(e.target.value); }}
-      />
-      <div className="bg-white border border-[#e2e9f1] rounded-xl p-5">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="text-left text-[#71809a] text-xs uppercase">
-              <th className="p-2">Número NF</th><th className="p-2">Origem</th><th className="p-2">Destino</th>
-              <th className="p-2">Valor</th><th className="p-2">CT-es</th><th className="p-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lista.map(n => (
-              <tr key={n.id} className="border-b border-[#edf1f5]">
-                <td className="p-2">{n.numero_nf}</td>
-                <td className="p-2">{n.origem || '—'}</td>
-                <td className="p-2">{n.destino || '—'}</td>
-                <td className="p-2">{brl(n.valor_nf)}</td>
-                <td className="p-2">{n.qtd_ctes}</td>
-                <td className="p-2">
-                  <button onClick={() => navigate(`/notas-fiscais/${n.id}`)} className="text-[#137a65] font-bold mr-3">Ver CT-es</button>
-                  {usuario?.is_admin && <button onClick={() => excluir(n.id)} className="text-[#c53644] font-bold">Excluir</button>}
-                </td>
-              </tr>
-            ))}
-            {lista.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={6}>Nenhuma nota fiscal cadastrada.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      <Modal open={modal} onClose={() => setModal(false)} title="Nova nota fiscal">
-        <div className="bg-[#f4f7fb] border border-[#e2e9f1] rounded-lg p-3 mb-4">
-          <label className="text-xs font-bold text-[#475569] block mb-1">Preencher automaticamente a partir do PDF da NF-e (DANFE)</label>
-          <input type="file" accept=".pdf" className="text-sm" onChange={extrairDePdf} disabled={extraindo} />
-          {extraindo && <p className="text-xs text-[#71809a] mt-1">Lendo o PDF...</p>}
-          {avisoExtracao && <p className="text-xs text-[#9b6400] mt-1">{avisoExtracao}</p>}
-        </div>
-        <form onSubmit={salvar} className="grid grid-cols-2 gap-3">
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Cliente
-            <select required className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })}>
-              <option value="">Selecione</option>
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Número da NF-e
-            <input required className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.numero_nf} onChange={e => setForm({ ...form, numero_nf: e.target.value })} />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Data de emissão
-            <input type="date" className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.data_emissao} onChange={e => setForm({ ...form, data_emissao: e.target.value })} />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Valor da NF
-            <input type="number" step="0.01" className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.valor_nf} onChange={e => setForm({ ...form, valor_nf: e.target.value })} />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Peso (kg)
-            <input type="number" step="0.01" className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.peso} onChange={e => setForm({ ...form, peso: e.target.value })} />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Volumes
-            <input type="number" className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.volumes} onChange={e => setForm({ ...form, volumes: e.target.value })} />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Origem
-            <input className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })} />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[#475569]">Destino
-            <input className="border border-[#ced8e5] rounded-lg p-2 font-normal" value={form.destino} onChange={e => setForm({ ...form, destino: e.target.value })} />
-          </label>
-          <div className="col-span-2 flex justify-end gap-2 mt-4">
-            <button type="button" onClick={() => setModal(false)} className="px-4 py-2">Cancelar</button>
-            <button className="bg-[#137a65] text-white font-bold px-4 py-2 rounded-lg">Salvar</button>
-          </div>
-        </form>
-      </Modal>
-    </div>
-  );
-}
