@@ -28,16 +28,16 @@ def _serializar(c):
     dados = c.to_dict()
     if c.pdf:
         if storage_enabled():
-            dados['pdf_url'] = presigned_url(c.pdf)
+            dados['pdf_url'] = presigned_url(c.pdf.removeprefix('uploads/'))
         else:
-            dados['pdf_url'] = f"{request.url_root.rstrip('/')}/uploads/{c.pdf.replace('uploads/', '', 1)}" if c.pdf.startswith('uploads/') else None
+            dados['pdf_url'] = f"{request.url_root.rstrip('/')}/{c.pdf}" if c.pdf.startswith('uploads/') else None
     else:
         dados['pdf_url'] = None
     if c.xml:
         if storage_enabled():
-            dados['xml_url'] = presigned_url(c.xml)
+            dados['xml_url'] = presigned_url(c.xml.removeprefix('uploads/'))
         else:
-            dados['xml_url'] = f"{request.url_root.rstrip('/')}/uploads/{c.xml.replace('uploads/', '', 1)}" if c.xml.startswith('uploads/') else None
+            dados['xml_url'] = f"{request.url_root.rstrip('/')}/{c.xml}" if c.xml.startswith('uploads/') else None
     else:
         dados['xml_url'] = None
     return dados
@@ -126,7 +126,7 @@ def excluir(id):
 @jwt_required()
 def baixar_arquivo(subpath):
     if storage_enabled():
-        url = presigned_url(subpath)
+        url = presigned_url(subpath.removeprefix('uploads/'))
         if not url:
             return erro('Arquivo não encontrado', 404)
         from flask import redirect
