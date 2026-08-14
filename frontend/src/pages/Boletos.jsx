@@ -7,11 +7,14 @@ const brl = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractio
 const fdata = v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
 
+// Ordem padrão dos status: vencido primeiro, depois pendente e, por último, pago.
+const ORDEM_STATUS = { VENCIDO: 0, PENDENTE: 1, PAGO: 2 };
+
 export default function Boletos() {
   const [lista, setLista] = useState([]);
   const [status, setStatus] = useState('');
   const [busca, setBusca] = useState('');
-  const [ordenacao, setOrdenacao] = useState({ chave: 'vencimento', dir: 'asc' });
+  const [ordenacao, setOrdenacao] = useState({ chave: 'status', dir: 'asc' });
   const { usuario } = useAuth();
 
   async function carregar(st = status) {
@@ -31,7 +34,25 @@ export default function Boletos() {
     setOrdenacao(prev => prev.chave === chave ? { chave, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { chave, dir: 'asc' });
   }
 
-  const filtrados = ordenar(lista.filter(b => b.numero.toLowerCase().includes(busca.toLowerCase())), ordenacao.chave, ordenacao.dir);
+  function ordenarBoletos(lista) {
+    if (ordenacao.chave === 'status') {
+      return [...lista].sort((a, b) => {
+        const sa = ORDEM_STATUS[a.status] ?? 99;
+        const sb = ORDEM_STATUS[b.status] ?? 99;
+        if (sa !== sb) return ordenacao.dir === 'asc' ? sa - sb : sb - sa;
+
+        // Dentro de cada status, mantém a ordenação por vencimento.
+        const va = a.vencimento || '';
+        const vb = b.vencimento || '';
+        if (va < vb) return -1;
+        if (va > vb) return 1;
+        return 0;
+      });
+    }
+    return ordenar(lista, ordenacao.chave, ordenacao.dir);
+  }
+
+  const filtrados = ordenarBoletos(lista.filter(b => b.numero.toLowerCase().includes(busca.toLowerCase())));
 
   return (
     <div>
