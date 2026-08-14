@@ -59,14 +59,6 @@ def create_app():
 
     @app.route('/uploads/<path:subpath>')
     def uploads(subpath):
-        from storage import enabled as storage_enabled, presigned_url
-        if storage_enabled():
-            key = subpath
-            if key.startswith('documents/'):
-                url = presigned_url(key)
-                if not url:
-                    abort(404)
-                return redirect(url)
         return send_from_directory(app.config['UPLOAD_FOLDER'], subpath)
 
     with app.app_context():
@@ -101,14 +93,6 @@ def _seed_admin():
     if not admin:
         admin = Cliente(nome='Administrador', cnpj='00000000000000', email='admin@portal.com')
         db.session.add(admin)
-    admin.is_admin = True
-    admin.ativo = True
-    admin.set_senha('admin123')
-    db.session.commit()
-        )
-        db.session.add(admin)
-    # O usuário administrador padrão é sempre recuperável com esta senha.
-    # Isso altera somente a senha e os flags deste usuário; nenhum outro dado é tocado.
     admin.nome = 'Administrador'
     admin.ativo = True
     admin.is_admin = True
