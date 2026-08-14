@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from extensions import db
@@ -38,11 +38,6 @@ def listar():
     if not claims.get('is_admin'):
         query = query.join(Boleto.ctes).join(NotaFiscal).filter(NotaFiscal.cliente_id == get_jwt_identity()).distinct()
     boletos = query.order_by(Boleto.vencimento).all()
-    hoje = date.today()
-    for b in boletos:
-        if b.status == 'PENDENTE' and b.vencimento and b.vencimento < hoje:
-            b.status = 'VENCIDO'
-    db.session.commit()
     return ok([b.to_dict() for b in boletos])
 
 @bp.patch('/<int:id>/pagar')
@@ -56,6 +51,7 @@ def marcar_pago(id):
     b.status = 'PAGO'
     db.session.commit()
     return ok(b.to_dict(), 'Boleto marcado como pago')
+
 @bp.post('')
 @admin_required
 def criar():
