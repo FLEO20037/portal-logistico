@@ -7,6 +7,13 @@ from helpers import ok, erro
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 
+@bp.route('/login', methods=['OPTIONS'])
+def login_options():
+    # O navegador envia este preflight antes do POST por causa do Content-Type.
+    # A resposta 204 permite que o POST de login seja enviado normalmente.
+    return ('', 204)
+
+
 @bp.post('/login')
 def login():
     body = request.get_json(force=True) or {}
