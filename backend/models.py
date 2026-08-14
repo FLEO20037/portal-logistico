@@ -102,4 +102,5 @@ class Boleto(db.Model):
                 'status': self.status, 'pdf': self.pdf,
                 'cte_ids': [c.id for c in self.ctes],
                 'ctes_numeros': [c.numero_cte for c in self.ctes],
+                'transportadora': self.ctes[0].transportadora.nome if self.ctes and self.ctes[0].transportadora else None,
                 'created_at': self.created_at.isoformat() if self.created_at else None}
