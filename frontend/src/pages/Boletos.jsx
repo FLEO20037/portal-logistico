@@ -61,6 +61,7 @@ export default function Boletos() {
               <ThOrdenavel label="Número" chave="numero" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="Valor" chave="valor" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="Vencimento" chave="vencimento" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Transportadora" chave="transportadora" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="Status" chave="status" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <th className="p-2">PDF</th>
               <th className="p-2">Ação</th>
@@ -72,6 +73,7 @@ export default function Boletos() {
                 <td className="p-2">{b.numero}</td>
                 <td className="p-2">{brl(b.valor)}</td>
                 <td className="p-2">{fdata(b.vencimento)}</td>
+                <td className="p-2">{b.transportadora || '—'}</td>
                 <td className="p-2">
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${b.status === 'PAGO' ? 'bg-[#e2f8f0] text-[#147a64]' : 'bg-[#fff0d4] text-[#9b6400]'}`}>{b.status}</span>
                 </td>
@@ -81,7 +83,7 @@ export default function Boletos() {
                 </td>
               </tr>
             ))}
-            {filtrados.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={6}>Nenhum boleto encontrado.</td></tr>}
+            {filtrados.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={7}>Nenhum boleto encontrado.</td></tr>}
           </tbody>
         </table>
       </div>
