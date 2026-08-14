@@ -12,9 +12,6 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
 
-    # CORS explícito para produção. O preflight OPTIONS é tratado manualmente
-    # para garantir que o navegador receba os headers mesmo quando a requisição
-    # ainda não chegou a uma rota específica.
     frontend_url = os.environ.get(
         'FRONTEND_URL',
         'https://portal-logistico-frontend.onrender.com'
@@ -100,12 +97,23 @@ def _migrar_boletos_para_many_to_many():
 
 def _seed_admin():
     from models import Cliente
-    if not Cliente.query.filter_by(email='admin@portal.com').first():
-        admin = Cliente(nome='Administrador', cnpj='00000000000000', email='admin@portal.com',
-                         ativo=True, is_admin=True)
-        admin.set_senha('admin123')
+    admin = Cliente.query.filter_by(email='admin@portal.com').first()
+    if not admin:
+        admin = Cliente(
+            nome='Administrador',
+            cnpj='00000000000000',
+            email='admin@portal.com',
+            ativo=True,
+            is_admin=True,
+        )
         db.session.add(admin)
-        db.session.commit()
+    # O usuário administrador padrão é sempre recuperável com esta senha.
+    # Isso altera somente a senha e os flags deste usuário; nenhum outro dado é tocado.
+    admin.nome = 'Administrador'
+    admin.ativo = True
+    admin.is_admin = True
+    admin.set_senha('admin123')
+    db.session.commit()
 
 
 if __name__ == '__main__':
