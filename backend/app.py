@@ -10,9 +10,22 @@ def create_app():
 
     db.init_app(app)
     jwt.init_app(app)
-    import os
-    origin = os.environ.get('FRONTEND_URL', '*')
-    CORS(app, resources={r"/api/*": {"origins": origin}}, supports_credentials=True)
+
+    # Em produção, permita explicitamente o frontend do Render.
+    # O fallback anterior '*' combinado com supports_credentials=True
+    # impede que alguns preflight OPTIONS retornem o header CORS correto.
+    frontend_url = os.environ.get(
+        'FRONTEND_URL',
+        'https://portal-logistico-frontend.onrender.com'
+    ).rstrip('/')
+    allowed_origins = [origin.strip().rstrip('/') for origin in frontend_url.split(',') if origin.strip()]
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": allowed_origins}},
+        supports_credentials=True,
+        methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allow_headers=['Content-Type', 'Authorization'],
+    )
 
     from routes.auth import bp as auth_bp
     from routes.clientes import bp as clientes_bp
@@ -38,7 +51,7 @@ def create_app():
                     abort(404)
                 return redirect(url)
             # Arquivos antigos apontam para o filesystem local. Se o arquivo ainda
-            # existir no ambiente, continua funcionando; os novos usam R2/S3.
+            # existir no ambiente, continua funcionando.
         return send_from_directory(app.config['UPLOAD_FOLDER'], subpath)
 
     with app.app_context():
