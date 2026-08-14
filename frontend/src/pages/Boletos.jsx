@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { ordenar, ThOrdenavel } from '../utils/ordenacao';
-import { useAuth } from '../context/AuthContext';
 
 const brl = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fdata = v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
 
-// Ordem padrão dos status: vencido primeiro, depois pendente e, por último, pago.
 const ORDEM_STATUS = { VENCIDO: 0, PENDENTE: 1, PAGO: 2 };
 
 export default function Boletos() {
@@ -15,7 +12,6 @@ export default function Boletos() {
   const [status, setStatus] = useState('');
   const [busca, setBusca] = useState('');
   const [ordenacao, setOrdenacao] = useState({ chave: 'status', dir: 'asc' });
-  const { usuario } = useAuth();
 
   async function carregar(st = status) {
     const { data } = await api.get('/boletos', { params: st ? { status: st } : {} });
@@ -40,13 +36,9 @@ export default function Boletos() {
         const sa = ORDEM_STATUS[a.status] ?? 99;
         const sb = ORDEM_STATUS[b.status] ?? 99;
         if (sa !== sb) return ordenacao.dir === 'asc' ? sa - sb : sb - sa;
-
-        // Dentro de cada status, mantém a ordenação por vencimento.
         const va = a.vencimento || '';
         const vb = b.vencimento || '';
-        if (va < vb) return -1;
-        if (va > vb) return 1;
-        return 0;
+        return va.localeCompare(vb);
       });
     }
     return ordenar(lista, ordenacao.chave, ordenacao.dir);
@@ -98,7 +90,7 @@ export default function Boletos() {
                 <td className="p-2">
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${b.status === 'PAGO' ? 'bg-[#e2f8f0] text-[#147a64]' : 'bg-[#fff0d4] text-[#9b6400]'}`}>{b.status}</span>
                 </td>
-                <td className="p-2">{b.pdf ? <a className="text-[#137a65] font-bold" target="_blank" href={`${API_BASE}/${b.pdf}`}>Ver PDF</a> : '—'}</td>
+                <td className="p-2">{b.pdf_url ? <a className="text-[#137a65] font-bold" target="_blank" rel="noreferrer" href={b.pdf_url}>Ver PDF</a> : '—'}</td>
                 <td className="p-2">
                   {b.status !== 'PAGO' && <button onClick={() => marcarPago(b.id)} className="text-[#137a65] font-bold">Marcar como pago</button>}
                 </td>
