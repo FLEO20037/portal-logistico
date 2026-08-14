@@ -99,12 +99,12 @@ def _seed_admin():
     from models import Cliente
     admin = Cliente.query.filter_by(email='admin@portal.com').first()
     if not admin:
-        admin = Cliente(
-            nome='Administrador',
-            cnpj='00000000000000',
-            email='admin@portal.com',
-            ativo=True,
-            is_admin=True,
+        admin = Cliente(nome='Administrador', cnpj='00000000000000', email='admin@portal.com')
+        db.session.add(admin)
+    admin.is_admin = True
+    admin.ativo = True
+    admin.set_senha('admin123')
+    db.session.commit()
         )
         db.session.add(admin)
     # O usuário administrador padrão é sempre recuperável com esta senha.
