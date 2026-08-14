@@ -21,16 +21,12 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         value: https://portal-logistico-frontend.onrender.com
-      - key: S3_ENDPOINT_URL
+      - key: SUPABASE_URL
         sync: false
-      - key: S3_BUCKET_NAME
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: S3_ACCESS_KEY_ID
-        sync: false
-      - key: S3_SECRET_ACCESS_KEY
-        sync: false
-      - key: S3_REGION
-        value: auto
+      - key: SUPABASE_BUCKET_NAME
+        value: portal-logistico
 
   - type: web
     name: portal-logistico-frontend
