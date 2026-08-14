@@ -128,6 +128,7 @@ export default function NotasFiscais() {
               <ThOrdenavel label="Número NF" chave="numero_nf" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="Origem" chave="origem" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="Destino" chave="destino" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <th className="p-2">Transportadora(s)</th>
               <ThOrdenavel label="Valor" chave="valor_nf" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="CT-es" chave="qtd_ctes" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <th className="p-2">Ações</th>
@@ -139,6 +140,7 @@ export default function NotasFiscais() {
                 <td className="p-2">{n.numero_nf}</td>
                 <td className="p-2">{n.origem || '—'}</td>
                 <td className="p-2">{n.destino || '—'}</td>
+                <td className="p-2">{n.transportadoras?.join(', ') || '—'}</td>
                 <td className="p-2">{brl(n.valor_nf)}</td>
                 <td className="p-2">{n.qtd_ctes}</td>
                 <td className="p-2">
@@ -148,7 +150,7 @@ export default function NotasFiscais() {
                 </td>
               </tr>
             ))}
-            {listaExibida.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={6}>Nenhuma nota fiscal encontrada.</td></tr>}
+            {listaExibida.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={7}>Nenhuma nota fiscal encontrada.</td></tr>}
           </tbody>
         </table>
       </div>
