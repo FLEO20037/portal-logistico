@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from extensions import db
 from models import Cte, NotaFiscal
 from helpers import ok, erro, admin_required, allowed_file, save_upload
+from storage import enabled as storage_enabled, presigned_url
 
 bp = Blueprint('ctes', __name__, url_prefix='/api/ctes')
 
@@ -23,6 +24,25 @@ def _pode_ver(cte):
     return str(cte.nota_fiscal.cliente_id) == get_jwt_identity()
 
 
+def _serializar(c):
+    dados = c.to_dict()
+    if c.pdf:
+        if storage_enabled():
+            dados['pdf_url'] = presigned_url(c.pdf)
+        else:
+            dados['pdf_url'] = f"{request.url_root.rstrip('/')}/uploads/{c.pdf.replace('uploads/', '', 1)}" if c.pdf.startswith('uploads/') else None
+    else:
+        dados['pdf_url'] = None
+    if c.xml:
+        if storage_enabled():
+            dados['xml_url'] = presigned_url(c.xml)
+        else:
+            dados['xml_url'] = f"{request.url_root.rstrip('/')}/uploads/{c.xml.replace('uploads/', '', 1)}" if c.xml.startswith('uploads/') else None
+    else:
+        dados['xml_url'] = None
+    return dados
+
+
 @bp.get('')
 @jwt_required()
 def listar():
@@ -36,7 +56,7 @@ def listar():
     claims = get_jwt()
     if not claims.get('is_admin'):
         query = query.join(NotaFiscal).filter(NotaFiscal.cliente_id == get_jwt_identity())
-    return ok([c.to_dict() for c in query.order_by(Cte.id.desc()).all()])
+    return ok([_serializar(c) for c in query.order_by(Cte.id.desc()).all()])
 
 
 @bp.get('/<int:id>')
@@ -47,7 +67,7 @@ def obter(id):
         return erro('CT-e não encontrado', 404)
     if not _pode_ver(c):
         return erro('Acesso negado', 403)
-    return ok(c.to_dict())
+    return ok(_serializar(c))
 
 
 @bp.post('')
@@ -66,7 +86,7 @@ def criar():
         c.xml = save_upload(request.files['xml'], 'ctes/xml')
     db.session.add(c)
     db.session.commit()
-    return ok(c.to_dict(), 'CT-e criado', 201)
+    return ok(_serializar(c), 'CT-e criado', 201)
 
 
 @bp.put('/<int:id>')
@@ -88,7 +108,7 @@ def atualizar(id):
     if 'xml' in request.files and allowed_file(request.files['xml'].filename, {'xml'}):
         c.xml = save_upload(request.files['xml'], 'ctes/xml')
     db.session.commit()
-    return ok(c.to_dict(), 'CT-e atualizado')
+    return ok(_serializar(c), 'CT-e atualizado')
 
 
 @bp.delete('/<int:id>')
@@ -105,4 +125,10 @@ def excluir(id):
 @bp.get('/arquivo/<path:subpath>')
 @jwt_required()
 def baixar_arquivo(subpath):
+    if storage_enabled():
+        url = presigned_url(subpath)
+        if not url:
+            return erro('Arquivo não encontrado', 404)
+        from flask import redirect
+        return redirect(url)
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], subpath, as_attachment=False)
