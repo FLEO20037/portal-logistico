@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { ordenar, ThOrdenavel } from '../utils/ordenacao';
+import { useAuth } from '../context/AuthContext';
 
 const brl = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fdata = v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -11,6 +12,7 @@ export default function Boletos() {
   const [status, setStatus] = useState('');
   const [busca, setBusca] = useState('');
   const [ordenacao, setOrdenacao] = useState({ chave: 'vencimento', dir: 'asc' });
+  const { usuario } = useAuth();
 
   async function carregar(st = status) {
     const { data } = await api.get('/boletos', { params: st ? { status: st } : {} });
@@ -18,6 +20,12 @@ export default function Boletos() {
   }
 
   useEffect(() => { carregar(); }, []);
+
+  async function marcarPago(id) {
+    if (!confirm('Confirmar que este boleto já foi pago?')) return;
+    await api.patch(`/boletos/${id}/pagar`);
+    carregar();
+  }
 
   function alternarOrdenacao(chave) {
     setOrdenacao(prev => prev.chave === chave ? { chave, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { chave, dir: 'asc' });
@@ -55,6 +63,7 @@ export default function Boletos() {
               <ThOrdenavel label="Vencimento" chave="vencimento" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <ThOrdenavel label="Status" chave="status" ordenacao={ordenacao} onClick={alternarOrdenacao} />
               <th className="p-2">PDF</th>
+              <th className="p-2">Ação</th>
             </tr>
           </thead>
           <tbody>
@@ -67,9 +76,12 @@ export default function Boletos() {
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${b.status === 'PAGO' ? 'bg-[#e2f8f0] text-[#147a64]' : 'bg-[#fff0d4] text-[#9b6400]'}`}>{b.status}</span>
                 </td>
                 <td className="p-2">{b.pdf ? <a className="text-[#137a65] font-bold" target="_blank" href={`${API_BASE}/${b.pdf}`}>Ver PDF</a> : '—'}</td>
+                <td className="p-2">
+                  {b.status !== 'PAGO' && <button onClick={() => marcarPago(b.id)} className="text-[#137a65] font-bold">Marcar como pago</button>}
+                </td>
               </tr>
             ))}
-            {filtrados.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={5}>Nenhum boleto encontrado.</td></tr>}
+            {filtrados.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={6}>Nenhum boleto encontrado.</td></tr>}
           </tbody>
         </table>
       </div>
