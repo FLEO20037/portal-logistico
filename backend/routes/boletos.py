@@ -45,7 +45,17 @@ def listar():
     db.session.commit()
     return ok([b.to_dict() for b in boletos])
 
-
+@bp.patch('/<int:id>/pagar')
+@jwt_required()
+def marcar_pago(id):
+    b = Boleto.query.get(id)
+    if not b:
+        return erro('Boleto não encontrado', 404)
+    if not _pode_ver(b):
+        return erro('Acesso negado', 403)
+    b.status = 'PAGO'
+    db.session.commit()
+    return ok(b.to_dict(), 'Boleto marcado como pago')
 @bp.post('')
 @admin_required
 def criar():
