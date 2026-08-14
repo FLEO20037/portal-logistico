@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
+import { ordenar, ThOrdenavel } from '../utils/ordenacao';
 
 const brl = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fdata = v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -9,6 +10,7 @@ export default function Boletos() {
   const [lista, setLista] = useState([]);
   const [status, setStatus] = useState('');
   const [busca, setBusca] = useState('');
+  const [ordenacao, setOrdenacao] = useState({ chave: 'vencimento', dir: 'asc' });
 
   async function carregar(st = status) {
     const { data } = await api.get('/boletos', { params: st ? { status: st } : {} });
@@ -17,7 +19,11 @@ export default function Boletos() {
 
   useEffect(() => { carregar(); }, []);
 
-  const filtrados = lista.filter(b => b.numero.toLowerCase().includes(busca.toLowerCase()));
+  function alternarOrdenacao(chave) {
+    setOrdenacao(prev => prev.chave === chave ? { chave, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { chave, dir: 'asc' });
+  }
+
+  const filtrados = ordenar(lista.filter(b => b.numero.toLowerCase().includes(busca.toLowerCase())), ordenacao.chave, ordenacao.dir);
 
   return (
     <div>
@@ -44,8 +50,11 @@ export default function Boletos() {
         <table className="w-full border-collapse">
           <thead>
             <tr className="text-left text-[#71809a] text-xs uppercase">
-              <th className="p-2">Número</th><th className="p-2">Valor</th><th className="p-2">Vencimento</th>
-              <th className="p-2">Status</th><th className="p-2">PDF</th>
+              <ThOrdenavel label="Número" chave="numero" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Valor" chave="valor" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Vencimento" chave="vencimento" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Status" chave="status" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <th className="p-2">PDF</th>
             </tr>
           </thead>
           <tbody>
