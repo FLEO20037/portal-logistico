@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from extensions import db
 from models import Boleto, Cte, NotaFiscal
 from helpers import ok, erro, admin_required, allowed_file, save_upload
+from storage import enabled as storage_enabled, presigned_url
 
 bp = Blueprint('boletos', __name__, url_prefix='/api/boletos')
 
@@ -24,6 +25,18 @@ def _pode_ver(boleto):
     return any(str(c.nota_fiscal.cliente_id) == cliente_id for c in boleto.ctes)
 
 
+def _serializar(b):
+    dados = b.to_dict()
+    if b.pdf:
+        if storage_enabled():
+            dados['pdf_url'] = presigned_url(b.pdf)
+        else:
+            dados['pdf_url'] = f"{request.url_root.rstrip('/')}/uploads/{b.pdf.replace('uploads/', '', 1)}" if b.pdf.startswith('uploads/') else None
+    else:
+        dados['pdf_url'] = None
+    return dados
+
+
 @bp.get('')
 @jwt_required()
 def listar():
@@ -38,7 +51,8 @@ def listar():
     if not claims.get('is_admin'):
         query = query.join(Boleto.ctes).join(NotaFiscal).filter(NotaFiscal.cliente_id == get_jwt_identity()).distinct()
     boletos = query.order_by(Boleto.vencimento).all()
-    return ok([b.to_dict() for b in boletos])
+    return ok([_serializar(b) for b in boletos])
+
 
 @bp.patch('/<int:id>/pagar')
 @jwt_required()
@@ -50,7 +64,8 @@ def marcar_pago(id):
         return erro('Acesso negado', 403)
     b.status = 'PAGO'
     db.session.commit()
-    return ok(b.to_dict(), 'Boleto marcado como pago')
+    return ok(_serializar(b), 'Boleto marcado como pago')
+
 
 @bp.post('')
 @admin_required
@@ -72,7 +87,7 @@ def criar():
         b.pdf = save_upload(request.files['pdf'], 'boletos')
     db.session.add(b)
     db.session.commit()
-    return ok(b.to_dict(), 'Boleto criado', 201)
+    return ok(_serializar(b), 'Boleto criado', 201)
 
 
 @bp.put('/<int:id>')
@@ -99,7 +114,7 @@ def atualizar(id):
     if 'pdf' in request.files and allowed_file(request.files['pdf'].filename, {'pdf'}):
         b.pdf = save_upload(request.files['pdf'], 'boletos')
     db.session.commit()
-    return ok(b.to_dict(), 'Boleto atualizado')
+    return ok(_serializar(b), 'Boleto atualizado')
 
 
 @bp.delete('/<int:id>')
