@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
+import { ordenar, ThOrdenavel } from '../utils/ordenacao';
 
 const vazio = { cliente_id: '', numero_nf: '', data_emissao: '', valor_nf: '', peso: '', volumes: '', origem: '', destino: '' };
 const brl = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -16,6 +17,8 @@ export default function NotasFiscais() {
   const [editId, setEditId] = useState(null);
   const [extraindo, setExtraindo] = useState(false);
   const [avisoExtracao, setAvisoExtracao] = useState('');
+  const [ordenacao, setOrdenacao] = useState({ chave: null, dir: 'asc' });
+  const [clienteFiltro, setClienteFiltro] = useState('');
   const navigate = useNavigate();
   const { usuario } = useAuth();
 
@@ -86,6 +89,15 @@ export default function NotasFiscais() {
     }
   }
 
+  function alternarOrdenacao(chave) {
+    setOrdenacao(prev => prev.chave === chave ? { chave, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { chave, dir: 'asc' });
+  }
+
+  const listaExibida = ordenar(
+    clienteFiltro ? lista.filter(n => String(n.cliente_id) === clienteFiltro) : lista,
+    ordenacao.chave, ordenacao.dir
+  );
+
   return (
     <div>
       <div className="flex justify-between items-center gap-4">
@@ -95,22 +107,34 @@ export default function NotasFiscais() {
         </div>
         {usuario?.is_admin && <button onClick={abrirNovo} className="bg-[#137a65] text-white font-bold px-4 py-3 rounded-lg">Adicionar NF-e</button>}
       </div>
-      <input
-        className="border border-[#ced8e5] rounded-lg p-3 my-4 w-72"
-        placeholder="Pesquisar por número, origem ou destino"
-        value={busca}
-        onChange={e => { setBusca(e.target.value); carregar(e.target.value); }}
-      />
+      <div className="flex gap-2 my-4">
+        <input
+          className="border border-[#ced8e5] rounded-lg p-3 w-72"
+          placeholder="Pesquisar por número, origem ou destino"
+          value={busca}
+          onChange={e => { setBusca(e.target.value); carregar(e.target.value); }}
+        />
+        {usuario?.is_admin && clientes.length > 0 && (
+          <select className="border border-[#ced8e5] rounded-lg p-3" value={clienteFiltro} onChange={e => setClienteFiltro(e.target.value)}>
+            <option value="">Todos os clientes</option>
+            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        )}
+      </div>
       <div className="bg-white border border-[#e2e9f1] rounded-xl p-5">
         <table className="w-full border-collapse">
           <thead>
             <tr className="text-left text-[#71809a] text-xs uppercase">
-              <th className="p-2">Número NF</th><th className="p-2">Origem</th><th className="p-2">Destino</th>
-              <th className="p-2">Valor</th><th className="p-2">CT-es</th><th className="p-2">Ações</th>
+              <ThOrdenavel label="Número NF" chave="numero_nf" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Origem" chave="origem" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Destino" chave="destino" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="Valor" chave="valor_nf" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <ThOrdenavel label="CT-es" chave="qtd_ctes" ordenacao={ordenacao} onClick={alternarOrdenacao} />
+              <th className="p-2">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {lista.map(n => (
+            {listaExibida.map(n => (
               <tr key={n.id} className="border-b border-[#edf1f5]">
                 <td className="p-2">{n.numero_nf}</td>
                 <td className="p-2">{n.origem || '—'}</td>
@@ -124,7 +148,7 @@ export default function NotasFiscais() {
                 </td>
               </tr>
             ))}
-            {lista.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={6}>Nenhuma nota fiscal cadastrada.</td></tr>}
+            {listaExibida.length === 0 && <tr><td className="p-2 text-[#71809a]" colSpan={6}>Nenhuma nota fiscal encontrada.</td></tr>}
           </tbody>
         </table>
       </div>
