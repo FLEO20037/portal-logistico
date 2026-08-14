@@ -29,9 +29,10 @@ def _serializar(b):
     dados = b.to_dict()
     if b.pdf:
         if storage_enabled():
-            dados['pdf_url'] = presigned_url(b.pdf)
+            key = b.pdf.removeprefix('uploads/')
+            dados['pdf_url'] = presigned_url(key)
         else:
-            dados['pdf_url'] = f"{request.url_root.rstrip('/')}/uploads/{b.pdf.replace('uploads/', '', 1)}" if b.pdf.startswith('uploads/') else None
+            dados['pdf_url'] = f"{request.url_root.rstrip('/')}/{b.pdf}" if b.pdf.startswith('uploads/') else None
     else:
         dados['pdf_url'] = None
     return dados
