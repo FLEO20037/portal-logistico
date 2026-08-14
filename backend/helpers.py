@@ -38,9 +38,9 @@ def save_upload(file_storage, subfolder):
     if enabled():
         key = f'documents/{subfolder}/{unique_name}'
         upload(file_storage, key)
-        return key
+        # Mantém o formato de caminho esperado pelo frontend atual.
+        return f'uploads/{key}'
 
-    # Fallback para desenvolvimento/local quando as variáveis S3/R2 não estiverem configuradas.
     folder = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, unique_name)
