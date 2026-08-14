@@ -57,7 +57,7 @@ class NotaFiscal(db.Model):
                 'data_emissao': self.data_emissao.isoformat() if self.data_emissao else None,
                 'valor_nf': float(self.valor_nf or 0), 'peso': float(self.peso or 0),
                 'volumes': self.volumes, 'origem': self.origem, 'destino': self.destino,
-                'qtd_ctes': len(self.ctes)}
+                'qtd_ctes': len(self.ctes)},'transportadoras': sorted({c.transportadora.nome for c in self.ctes if c.transportadora})
 
 
 class Cte(db.Model):
