@@ -1,3 +1,4 @@
+import os
 from flask import Flask, send_from_directory, redirect, abort
 from flask_cors import CORS
 from config import Config
