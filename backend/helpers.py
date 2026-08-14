@@ -1,4 +1,5 @@
 import os
+import uuid
 from functools import wraps
 from flask import jsonify, current_app
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
@@ -29,9 +30,19 @@ def allowed_file(filename, exts):
 
 def save_upload(file_storage, subfolder):
     from werkzeug.utils import secure_filename
+    from storage import enabled, upload
+
+    filename = secure_filename(file_storage.filename)
+    unique_name = f'{uuid.uuid4().hex}-{filename}'
+
+    if enabled():
+        key = f'documents/{subfolder}/{unique_name}'
+        upload(file_storage, key)
+        return key
+
+    # Fallback para desenvolvimento/local quando as variáveis S3/R2 não estiverem configuradas.
     folder = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
     os.makedirs(folder, exist_ok=True)
-    filename = secure_filename(file_storage.filename)
-    path = os.path.join(folder, filename)
+    path = os.path.join(folder, unique_name)
     file_storage.save(path)
-    return f'uploads/{subfolder}/{filename}'
+    return f'uploads/{subfolder}/{unique_name}'
