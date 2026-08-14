@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, redirect, abort
 from flask_cors import CORS
 from config import Config
 from extensions import db, jwt
@@ -27,6 +27,18 @@ def create_app():
 
     @app.route('/uploads/<path:subpath>')
     def uploads(subpath):
+        from storage import enabled as storage_enabled, presigned_url
+        if storage_enabled():
+            # Novos arquivos usam documents/... no storage, mas continuam acessíveis
+            # pela URL /uploads/... para manter compatibilidade com o frontend atual.
+            key = subpath
+            if key.startswith('documents/'):
+                url = presigned_url(key)
+                if not url:
+                    abort(404)
+                return redirect(url)
+            # Arquivos antigos apontam para o filesystem local. Se o arquivo ainda
+            # existir no ambiente, continua funcionando; os novos usam R2/S3.
         return send_from_directory(app.config['UPLOAD_FOLDER'], subpath)
 
     with app.app_context():
