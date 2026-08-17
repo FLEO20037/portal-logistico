@@ -1,5 +1,5 @@
 import os
-from flask import Flask, send_from_directory, redirect, abort, request, jsonify
+from flask import Flask, send_from_directory, abort, request
 from flask_cors import CORS
 from config import Config
 from extensions import db, jwt
@@ -59,6 +59,12 @@ def create_app():
 
     @app.route('/uploads/<path:subpath>')
     def uploads(subpath):
+        import storage
+        if storage.enabled():
+            conteudo = storage.baixar(subpath)
+            if conteudo is None:
+                abort(404)
+            return conteudo, 200, {'Content-Type': 'application/octet-stream'}
         return send_from_directory(app.config['UPLOAD_FOLDER'], subpath)
 
     with app.app_context():
