@@ -1,5 +1,4 @@
 import os
-import uuid
 from functools import wraps
 from flask import jsonify, current_app
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
@@ -30,19 +29,15 @@ def allowed_file(filename, exts):
 
 def save_upload(file_storage, subfolder):
     from werkzeug.utils import secure_filename
-    from storage import enabled, upload
-
+    import storage
     filename = secure_filename(file_storage.filename)
-    unique_name = f'{uuid.uuid4().hex}-{filename}'
-
-    if enabled():
-        key = f'documents/{subfolder}/{unique_name}'
-        upload(file_storage, key)
-        # Mantém o formato de caminho esperado pelo frontend atual.
-        return f'uploads/{key}'
-
-    folder = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
-    os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, unique_name)
-    file_storage.save(path)
-    return f'uploads/{subfolder}/{unique_name}'
+    rel_path = f'{subfolder}/{filename}'
+    conteudo = file_storage.read()
+    if storage.enabled():
+        storage.upload(rel_path, conteudo, file_storage.mimetype or 'application/octet-stream')
+    else:
+        folder = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, filename), 'wb') as f:
+            f.write(conteudo)
+    return f'uploads/{rel_path}'
