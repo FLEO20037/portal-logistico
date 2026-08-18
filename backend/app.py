@@ -60,11 +60,12 @@ def create_app():
     @app.route('/uploads/<path:subpath>')
     def uploads(subpath):
         import storage
+        from flask import redirect
         if storage.enabled():
-            conteudo = storage.baixar(subpath)
-            if conteudo is None:
+            url = storage.presigned_url(subpath)
+            if not url:
                 abort(404)
-            return conteudo, 200, {'Content-Type': 'application/octet-stream'}
+            return redirect(url)
         return send_from_directory(app.config['UPLOAD_FOLDER'], subpath)
 
     with app.app_context():
