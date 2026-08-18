@@ -33,3 +33,20 @@ def baixar(caminho):
     if r.status_code == 200:
         return r.content
     return None
+
+
+def presigned_url(caminho, expires_in=3600):
+    if not enabled():
+        return None
+    url = f'{SUPABASE_URL}/storage/v1/object/sign/{BUCKET}/{caminho}'
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {SUPABASE_KEY}',
+        'Content-Type': 'application/json',
+    }
+    r = requests.post(url, headers=headers, json={'expiresIn': expires_in}, timeout=30)
+    if r.status_code == 200:
+        signed = r.json().get('signedURL')
+        if signed:
+            return f'{SUPABASE_URL}/storage/v1{signed}'
+    return None
